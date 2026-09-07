@@ -34,3 +34,17 @@ def test_rejects_background_opacity_outside_unit_interval(project_yaml: Path) ->
 
     with pytest.raises(ConfigurationError, match="background_opacity"):
         load_project_config(project_yaml)
+
+
+def test_loads_centered_scaled_logo(project_yaml: Path) -> None:
+    project_yaml.write_text(
+        project_yaml.read_text(encoding="utf-8").replace(
+            "    safe_area: youtube_critical", "    logo_anchor: center\n    logo_scale: 0.6\n    safe_area: youtube_critical"
+        ),
+        encoding="utf-8",
+    )
+
+    config = load_project_config(project_yaml)
+
+    assert config.templates[0].logo_anchor == "center"
+    assert config.templates[0].logo_scale == 0.6

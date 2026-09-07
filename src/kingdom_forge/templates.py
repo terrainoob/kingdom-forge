@@ -63,7 +63,8 @@ class Template(ABC):
             canvas.paste(portrait, target)
         if self.settings.logo:
             logo = self.context.assets.image(self.settings.logo)
-            logo_box = Constraints(area.width // 4, area.height // 4, horizontal="left", vertical="top").resolve(area)
+            horizontal, vertical = ("left", "top") if self.settings.logo_anchor == "top_left" else ("center_x", "center_y")
+            logo_box = Constraints(round(area.width * self.settings.logo_scale), round(area.height * self.settings.logo_scale), horizontal=horizontal, vertical=vertical).resolve(area)
             target = fit_aspect(*logo.size, logo_box)
             canvas.paste(logo, target)
 
