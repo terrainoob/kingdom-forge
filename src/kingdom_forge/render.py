@@ -34,9 +34,13 @@ class Canvas:
         resized = image.resize((bounds.width, bounds.height), Image.Resampling.LANCZOS)
         self.image.alpha_composite(resized, (bounds.x, bounds.y))
 
-    def cover(self, image: Image.Image) -> None:
-        """Fill the canvas with an image while preserving its aspect ratio."""
+    def cover(self, image: Image.Image, opacity: float = 1.0) -> None:
+        """Fill the canvas with an aspect-preserving image at the requested opacity."""
+        if not 0.0 <= opacity <= 1.0:
+            raise ValueError("Background opacity must be between 0 and 1.")
         fitted = ImageOps.fit(image.convert("RGBA"), (self.width, self.height), Image.Resampling.LANCZOS)
+        if opacity < 1.0:
+            fitted.putalpha(fitted.getchannel("A").point(lambda value: round(value * opacity)))
         self.image.alpha_composite(fitted)
 
 

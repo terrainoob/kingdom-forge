@@ -35,7 +35,7 @@ class Template(ABC):
         rgba = parse_color(color)
         canvas = Canvas(self.settings.width, self.settings.height, rgba if not self.settings.transparent else (*rgba[:3], 0))
         if self.settings.background_image:
-            canvas.cover(self.context.assets.image(self.settings.background_image))
+            canvas.cover(self.context.assets.image(self.settings.background_image), self.settings.background_opacity)
         return canvas
 
     def _content_area(self) -> Rect:

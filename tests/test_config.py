@@ -27,3 +27,10 @@ def test_rejects_duplicate_template_names(project_yaml: Path) -> None:
     project_yaml.write_text(text.replace("templates:\n", "templates:\n" + duplicate), encoding="utf-8")
     with pytest.raises(ConfigurationError, match="Duplicate"):
         load_project_config(project_yaml)
+
+
+def test_rejects_background_opacity_outside_unit_interval(project_yaml: Path) -> None:
+    project_yaml.write_text(project_yaml.read_text(encoding="utf-8") + "    background_opacity: 2\n", encoding="utf-8")
+
+    with pytest.raises(ConfigurationError, match="background_opacity"):
+        load_project_config(project_yaml)

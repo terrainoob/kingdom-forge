@@ -52,6 +52,7 @@ class TemplateSettings:
     transparent: bool = False
     output_name: str | None = None
     background_image: str | None = None
+    background_opacity: float = 1.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -106,14 +107,14 @@ def _brand(raw: dict[str, Any]) -> BrandSettings:
 def _templates(raw: Any) -> tuple[TemplateSettings, ...]:
     if not isinstance(raw, list):
         raise ConfigurationError("templates must be a YAML list.")
-    allowed = {"name", "kind", "width", "height", "background_color", "background_image", "headline", "subtitle", "tagline", "logo", "character", "safe_area", "transparent", "output_name"}
+    allowed = {"name", "kind", "width", "height", "background_color", "background_image", "background_opacity", "headline", "subtitle", "tagline", "logo", "character", "safe_area", "transparent", "output_name"}
     result: list[TemplateSettings] = []
     for index, value in enumerate(raw):
         item = _mapping(value, f"templates[{index}]")
         _unknown(item, allowed, f"templates[{index}]")
         result.append(TemplateSettings(
             _string(item.get("name"), f"templates[{index}].name"), _string(item.get("kind"), f"templates[{index}].kind"), _positive_int(item.get("width"), f"templates[{index}].width"), _positive_int(item.get("height"), f"templates[{index}].height"), _string(item.get("background_color"), f"templates[{index}].background_color"),
-            _optional_string(item.get("headline"), f"templates[{index}].headline"), _optional_string(item.get("subtitle"), f"templates[{index}].subtitle"), _optional_string(item.get("tagline"), f"templates[{index}].tagline"), _optional_path(item.get("logo"), f"templates[{index}].logo"), _optional_path(item.get("character"), f"templates[{index}].character"), _optional_string(item.get("safe_area"), f"templates[{index}].safe_area"), _bool(item.get("transparent", False), f"templates[{index}].transparent"), _optional_string(item.get("output_name"), f"templates[{index}].output_name"), _optional_path(item.get("background_image"), f"templates[{index}].background_image"),
+            _optional_string(item.get("headline"), f"templates[{index}].headline"), _optional_string(item.get("subtitle"), f"templates[{index}].subtitle"), _optional_string(item.get("tagline"), f"templates[{index}].tagline"), _optional_path(item.get("logo"), f"templates[{index}].logo"), _optional_path(item.get("character"), f"templates[{index}].character"), _optional_string(item.get("safe_area"), f"templates[{index}].safe_area"), _bool(item.get("transparent", False), f"templates[{index}].transparent"), _optional_string(item.get("output_name"), f"templates[{index}].output_name"), _optional_path(item.get("background_image"), f"templates[{index}].background_image"), _opacity(item.get("background_opacity", 1.0), f"templates[{index}].background_opacity"),
         ))
     return tuple(result)
 
@@ -164,6 +165,12 @@ def _bool(value: Any, location: str) -> bool:
     if not isinstance(value, bool):
         raise ConfigurationError(f"{location} must be true or false.")
     return value
+
+
+def _opacity(value: Any, location: str) -> float:
+    if not isinstance(value, (int, float)) or isinstance(value, bool) or not 0 <= value <= 1:
+        raise ConfigurationError(f"{location} must be a number from 0 through 1.")
+    return float(value)
 
 
 def _path(value: Any, location: str, base: Path) -> Path:
