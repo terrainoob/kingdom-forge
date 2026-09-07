@@ -1,0 +1,7 @@
+project:
+  name: Kingdom Forge
+  output_directory: output
+  assets_directory: assets
+logging:
+  level: INFO
+
