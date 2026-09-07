@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 from kingdom_forge.layout import Rect
 
@@ -33,6 +33,11 @@ class Canvas:
         """Scale and alpha-composite an image into *bounds*."""
         resized = image.resize((bounds.width, bounds.height), Image.Resampling.LANCZOS)
         self.image.alpha_composite(resized, (bounds.x, bounds.y))
+
+    def cover(self, image: Image.Image) -> None:
+        """Fill the canvas with an image while preserving its aspect ratio."""
+        fitted = ImageOps.fit(image.convert("RGBA"), (self.width, self.height), Image.Resampling.LANCZOS)
+        self.image.alpha_composite(fitted)
 
 
 @dataclass(frozen=True, slots=True)

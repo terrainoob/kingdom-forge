@@ -33,7 +33,10 @@ class Template(ABC):
     def _canvas(self) -> Canvas:
         color = self.context.brand.palette.get(self.settings.background_color, self.settings.background_color)
         rgba = parse_color(color)
-        return Canvas(self.settings.width, self.settings.height, rgba if not self.settings.transparent else (*rgba[:3], 0))
+        canvas = Canvas(self.settings.width, self.settings.height, rgba if not self.settings.transparent else (*rgba[:3], 0))
+        if self.settings.background_image:
+            canvas.cover(self.context.assets.image(self.settings.background_image))
+        return canvas
 
     def _content_area(self) -> Rect:
         canvas = Rect(0, 0, self.settings.width, self.settings.height)
