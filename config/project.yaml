@@ -1,7 +1,47 @@
 project:
   name: Kingdom Forge
+  version: 1.0.0
   output_directory: output
   assets_directory: assets
 logging:
   level: INFO
-
+brand:
+  palette:
+    night: "#101827"
+    royal: "#513A8C"
+    gold: "#E8BC55"
+    parchment: "#F7F1E3"
+    ink: "#15100A"
+  typography:
+    display: DejaVuSans-Bold.ttf
+    body: DejaVuSans.ttf
+  spacing:
+    xs: 16
+    sm: 32
+    md: 64
+    lg: 96
+  corner_radius: 24
+templates:
+  - name: youtube-banner
+    kind: youtube_banner
+    width: 2560
+    height: 1440
+    background_color: night
+    headline: The Kingdom of Sir Pops
+    subtitle: Welcome to the Realm
+    tagline: New adventures every week
+    safe_area: youtube_critical
+  - name: starting-soon
+    kind: twitch_starting_soon
+    width: 1920
+    height: 1080
+    background_color: royal
+    headline: Starting Soon
+    subtitle: The court is assembling
+  - name: episode-thumbnail
+    kind: thumbnail
+    width: 1280
+    height: 720
+    background_color: night
+    headline: A Royal Adventure
+    subtitle: Episode 01

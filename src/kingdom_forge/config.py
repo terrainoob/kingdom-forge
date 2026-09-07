@@ -4,115 +4,185 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final
+from typing import Any, Mapping
 
 import yaml
 
 from kingdom_forge.exceptions import ConfigurationError
 
-_ROOT_KEYS: Final[frozenset[str]] = frozenset({"project", "logging"})
-_PROJECT_KEYS: Final[frozenset[str]] = frozenset(
-    {"name", "output_directory", "assets_directory"}
-)
-_LOGGING_KEYS: Final[frozenset[str]] = frozenset({"level"})
-
 
 @dataclass(frozen=True, slots=True)
 class ProjectSettings:
-    """Filesystem and identity settings for one Forge project."""
-
+    """Project identity and filesystem locations."""
     name: str
     output_directory: Path
     assets_directory: Path
+    version: str
 
 
 @dataclass(frozen=True, slots=True)
 class LoggingSettings:
-    """Logging settings controlled by project configuration."""
-
+    """Application logging settings."""
     level: str
 
 
 @dataclass(frozen=True, slots=True)
-class ProjectConfig:
-    """Validated configuration required to initialize Kingdom Forge."""
+class BrandSettings:
+    """Brand tokens used by every template."""
+    palette: Mapping[str, str]
+    typography: Mapping[str, str]
+    spacing: Mapping[str, int]
+    corner_radius: int
 
+
+@dataclass(frozen=True, slots=True)
+class TemplateSettings:
+    """Declarative settings for one rendered template."""
+    name: str
+    kind: str
+    width: int
+    height: int
+    background_color: str
+    headline: str = ""
+    subtitle: str = ""
+    tagline: str = ""
+    logo: str | None = None
+    character: str | None = None
+    safe_area: str | None = None
+    transparent: bool = False
+    output_name: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ProjectConfig:
+    """Validated source of truth for a Kingdom Forge project."""
     project: ProjectSettings
     logging: LoggingSettings
+    brand: BrandSettings
+    templates: tuple[TemplateSettings, ...]
     source_path: Path
 
 
 def load_project_config(path: Path) -> ProjectConfig:
-    """Load and validate a YAML project configuration from *path*.
-
-    Relative asset and output paths are resolved relative to the configuration file.
-    """
+    """Load YAML configuration and reject malformed or misspelled fields."""
     source_path = path.resolve()
     if not source_path.is_file():
         raise ConfigurationError(f"Configuration file does not exist: {source_path}")
-
     try:
         with source_path.open(encoding="utf-8") as stream:
-            document = yaml.safe_load(stream)
+            raw = yaml.safe_load(stream)
     except yaml.YAMLError as error:
         raise ConfigurationError(f"Invalid YAML in {source_path}: {error}") from error
-
-    root = _mapping(document, "document")
-    _reject_unknown_keys(root, _ROOT_KEYS, "document")
+    root = _mapping(raw, "document")
+    _unknown(root, {"project", "logging", "brand", "templates"}, "document")
+    base = source_path.parent.parent if source_path.parent.name == "config" else source_path.parent
     project = _mapping(root.get("project"), "project")
-    logging = _mapping(root.get("logging"), "logging")
-    _reject_unknown_keys(project, _PROJECT_KEYS, "project")
-    _reject_unknown_keys(logging, _LOGGING_KEYS, "logging")
-
-    base_directory = source_path.parent.parent
-    return ProjectConfig(
-        project=ProjectSettings(
-            name=_non_empty_string(project.get("name"), "project.name"),
-            output_directory=_resolve_directory(
-                project.get("output_directory"), "project.output_directory", base_directory
-            ),
-            assets_directory=_resolve_directory(
-                project.get("assets_directory"), "project.assets_directory", base_directory
-            ),
-        ),
-        logging=LoggingSettings(level=_log_level(logging.get("level"))),
-        source_path=source_path,
+    _unknown(project, {"name", "output_directory", "assets_directory", "version"}, "project")
+    logging = _mapping(root.get("logging", {"level": "INFO"}), "logging")
+    _unknown(logging, {"level"}, "logging")
+    brand = _mapping(root.get("brand"), "brand")
+    _unknown(brand, {"palette", "typography", "spacing", "corner_radius"}, "brand")
+    result = ProjectConfig(
+        project=ProjectSettings(_string(project.get("name"), "project.name"), _path(project.get("output_directory"), "project.output_directory", base), _path(project.get("assets_directory"), "project.assets_directory", base), _string(project.get("version", "0.1.0"), "project.version")),
+        logging=LoggingSettings(_level(logging.get("level", "INFO"))),
+        brand=_brand(brand), templates=_templates(root.get("templates", [])), source_path=source_path,
     )
+    _unique_template_names(result.templates)
+    return result
+
+
+def _brand(raw: dict[str, Any]) -> BrandSettings:
+    palette = _string_mapping(raw.get("palette"), "brand.palette")
+    for name, color in palette.items():
+        if not _is_color(color):
+            raise ConfigurationError(f"brand.palette.{name} must be #RRGGBB or #RRGGBBAA.")
+    typography = _string_mapping(raw.get("typography"), "brand.typography")
+    spacing_raw = _mapping(raw.get("spacing"), "brand.spacing")
+    spacing = {key: _positive_int(value, f"brand.spacing.{key}") for key, value in spacing_raw.items()}
+    return BrandSettings(palette, typography, spacing, _non_negative_int(raw.get("corner_radius", 0), "brand.corner_radius"))
+
+
+def _templates(raw: Any) -> tuple[TemplateSettings, ...]:
+    if not isinstance(raw, list):
+        raise ConfigurationError("templates must be a YAML list.")
+    allowed = {"name", "kind", "width", "height", "background_color", "headline", "subtitle", "tagline", "logo", "character", "safe_area", "transparent", "output_name"}
+    result: list[TemplateSettings] = []
+    for index, value in enumerate(raw):
+        item = _mapping(value, f"templates[{index}]")
+        _unknown(item, allowed, f"templates[{index}]")
+        result.append(TemplateSettings(
+            _string(item.get("name"), f"templates[{index}].name"), _string(item.get("kind"), f"templates[{index}].kind"), _positive_int(item.get("width"), f"templates[{index}].width"), _positive_int(item.get("height"), f"templates[{index}].height"), _string(item.get("background_color"), f"templates[{index}].background_color"),
+            _optional_string(item.get("headline"), f"templates[{index}].headline"), _optional_string(item.get("subtitle"), f"templates[{index}].subtitle"), _optional_string(item.get("tagline"), f"templates[{index}].tagline"), _optional_path(item.get("logo"), f"templates[{index}].logo"), _optional_path(item.get("character"), f"templates[{index}].character"), _optional_string(item.get("safe_area"), f"templates[{index}].safe_area"), _bool(item.get("transparent", False), f"templates[{index}].transparent"), _optional_string(item.get("output_name"), f"templates[{index}].output_name"),
+        ))
+    return tuple(result)
 
 
 def _mapping(value: Any, location: str) -> dict[str, Any]:
-    if not isinstance(value, dict):
-        raise ConfigurationError(f"{location} must be a YAML mapping.")
-    if not all(isinstance(key, str) for key in value):
-        raise ConfigurationError(f"{location} must use string keys.")
+    if not isinstance(value, dict) or not all(isinstance(key, str) for key in value):
+        raise ConfigurationError(f"{location} must be a YAML mapping with string keys.")
     return value
 
 
-def _reject_unknown_keys(
-    mapping: dict[str, Any], allowed_keys: frozenset[str], location: str
-) -> None:
-    unknown_keys = sorted(set(mapping) - allowed_keys)
-    if unknown_keys:
-        formatted_keys = ", ".join(unknown_keys)
-        raise ConfigurationError(f"Unknown key(s) in {location}: {formatted_keys}")
+def _string_mapping(value: Any, location: str) -> dict[str, str]:
+    return {key: _string(item, f"{location}.{key}") for key, item in _mapping(value, location).items()}
 
 
-def _non_empty_string(value: Any, location: str) -> str:
+def _unknown(value: dict[str, Any], allowed: set[str], location: str) -> None:
+    unknown = sorted(set(value) - allowed)
+    if unknown:
+        raise ConfigurationError(f"Unknown key(s) in {location}: {', '.join(unknown)}")
+
+
+def _string(value: Any, location: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ConfigurationError(f"{location} must be a non-empty string.")
     return value.strip()
 
 
-def _resolve_directory(value: Any, location: str, base_directory: Path) -> Path:
-    directory = Path(_non_empty_string(value, location))
-    return directory if directory.is_absolute() else (base_directory / directory).resolve()
+def _optional_string(value: Any, location: str) -> str:
+    return "" if value is None else _string(value, location)
 
 
-def _log_level(value: Any) -> str:
-    level = _non_empty_string(value, "logging.level").upper()
-    valid_levels = {"CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"}
-    if level not in valid_levels:
-        choices = ", ".join(sorted(valid_levels))
-        raise ConfigurationError(f"logging.level must be one of: {choices}.")
+def _optional_path(value: Any, location: str) -> str | None:
+    return None if value is None else _string(value, location)
+
+
+def _positive_int(value: Any, location: str) -> int:
+    if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+        raise ConfigurationError(f"{location} must be a positive integer.")
+    return value
+
+
+def _non_negative_int(value: Any, location: str) -> int:
+    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+        raise ConfigurationError(f"{location} must be a non-negative integer.")
+    return value
+
+
+def _bool(value: Any, location: str) -> bool:
+    if not isinstance(value, bool):
+        raise ConfigurationError(f"{location} must be true or false.")
+    return value
+
+
+def _path(value: Any, location: str, base: Path) -> Path:
+    candidate = Path(_string(value, location))
+    return candidate if candidate.is_absolute() else (base / candidate).resolve()
+
+
+def _level(value: Any) -> str:
+    level = _string(value, "logging.level").upper()
+    if level not in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}:
+        raise ConfigurationError("logging.level must be a standard Python log level.")
     return level
 
+
+def _is_color(value: str) -> bool:
+    return len(value) in {7, 9} and value.startswith("#") and all(char in "0123456789abcdefABCDEF" for char in value[1:])
+
+
+def _unique_template_names(templates: tuple[TemplateSettings, ...]) -> None:
+    names = [template.name for template in templates]
+    duplicates = sorted({name for name in names if names.count(name) > 1})
+    if duplicates:
+        raise ConfigurationError(f"Duplicate template name(s): {', '.join(duplicates)}")

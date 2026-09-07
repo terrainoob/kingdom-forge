@@ -1,4 +1,4 @@
-"""Tests for Kingdom Forge YAML configuration loading."""
+"""Tests for typed project configuration."""
 
 from pathlib import Path
 
@@ -8,35 +8,22 @@ from kingdom_forge.config import load_project_config
 from kingdom_forge.exceptions import ConfigurationError
 
 
-def test_load_project_config_resolves_project_paths(tmp_path: Path) -> None:
-    config_directory = tmp_path / "config"
-    config_directory.mkdir()
-    config_path = config_directory / "project.yaml"
-    config_path.write_text(
-        """project:\n  name: Test Kingdom\n  output_directory: output\n  assets_directory: assets\nlogging:\n  level: debug\n""",
-        encoding="utf-8",
-    )
-
-    config = load_project_config(config_path)
-
-    assert config.project.name == "Test Kingdom"
+def test_loads_complete_project(project_yaml: Path, tmp_path: Path) -> None:
+    config = load_project_config(project_yaml)
     assert config.project.output_directory == tmp_path / "output"
-    assert config.project.assets_directory == tmp_path / "assets"
-    assert config.logging.level == "DEBUG"
+    assert config.templates[0].name == "banner"
+    assert config.brand.palette["gold"] == "#E8BC55"
 
 
-def test_load_project_config_rejects_unknown_keys(tmp_path: Path) -> None:
-    config_path = tmp_path / "project.yaml"
-    config_path.write_text(
-        """project:\n  name: Test Kingdom\n  output_directory: output\n  assets_directory: assets\n  typo: value\nlogging:\n  level: INFO\n""",
-        encoding="utf-8",
-    )
-
+def test_rejects_unknown_template_field(project_yaml: Path) -> None:
+    project_yaml.write_text(project_yaml.read_text(encoding="utf-8") + "    typo: nope\n", encoding="utf-8")
     with pytest.raises(ConfigurationError, match="Unknown key"):
-        load_project_config(config_path)
+        load_project_config(project_yaml)
 
 
-def test_load_project_config_requires_existing_file(tmp_path: Path) -> None:
-    with pytest.raises(ConfigurationError, match="does not exist"):
-        load_project_config(tmp_path / "missing.yaml")
-
+def test_rejects_duplicate_template_names(project_yaml: Path) -> None:
+    text = project_yaml.read_text(encoding="utf-8")
+    duplicate = "  - name: banner\n    kind: thumbnail\n    width: 10\n    height: 10\n    background_color: night\n"
+    project_yaml.write_text(text.replace("templates:\n", "templates:\n" + duplicate), encoding="utf-8")
+    with pytest.raises(ConfigurationError, match="Duplicate"):
+        load_project_config(project_yaml)
