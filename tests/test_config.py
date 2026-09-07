@@ -48,3 +48,19 @@ def test_loads_centered_scaled_logo(project_yaml: Path) -> None:
 
     assert config.templates[0].logo_anchor == "center"
     assert config.templates[0].logo_scale == 0.6
+
+
+def test_loads_left_constrained_copy(project_yaml: Path) -> None:
+    project_yaml.write_text(
+        project_yaml.read_text(encoding="utf-8").replace(
+            "    safe_area: youtube_critical", "    copy_anchor: left\n    copy_width: 0.65\n    copy_offset_y: 120\n    copy_layout: stacked\n    safe_area: youtube_critical"
+        ),
+        encoding="utf-8",
+    )
+
+    config = load_project_config(project_yaml)
+
+    assert config.templates[0].copy_anchor == "left"
+    assert config.templates[0].copy_width == 0.65
+    assert config.templates[0].copy_offset_y == 120
+    assert config.templates[0].copy_layout == "stacked"

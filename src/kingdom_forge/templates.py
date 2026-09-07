@@ -44,15 +44,44 @@ class Template(ABC):
 
     def _paint_common_text(self, canvas: Canvas) -> None:
         area = self._content_area()
+        copy_area = self._copy_area(area)
         text = TextPainter(self.context.fonts)
         display = self.context.brand.typography["display"]
         body = self.context.brand.typography["body"]
-        text.centered(canvas, self.settings.headline, area, display, max(24, area.height // 7), parse_color(self.context.brand.palette["parchment"]), -self.context.brand.spacing["sm"])
-        text.centered(canvas, self.settings.subtitle, area, body, max(18, area.height // 14), parse_color(self.context.brand.palette["gold"]), self.context.brand.spacing["sm"])
-        text.centered(canvas, self.settings.tagline, area, body, max(14, area.height // 20), parse_color(self.context.brand.palette["parchment"]), self.context.brand.spacing["lg"])
+        if self.settings.copy_layout == "stacked":
+            self._paint_stacked_copy(canvas, text, copy_area, display, body)
+        else:
+            self._paint_legacy_copy(canvas, text, area, copy_area, display, body)
         if self.context.guides:
             from PIL import ImageDraw
             ImageDraw.Draw(canvas.image).rectangle((area.x, area.y, area.right, area.bottom), outline=parse_color(self.context.brand.palette["gold"]), width=max(1, self.context.brand.spacing["xs"] // 8))
+
+    def _paint_legacy_copy(self, canvas: Canvas, text: TextPainter, area: Rect, copy_area: Rect, display: str, body: str) -> None:
+        copy_offset = self.settings.copy_offset_y
+        text.centered(canvas, self.settings.headline, copy_area, display, max(24, area.height // 7), parse_color(self.context.brand.palette["parchment"]), -self.context.brand.spacing["sm"] + copy_offset)
+        text.centered(canvas, self.settings.subtitle, copy_area, body, max(18, area.height // 14), parse_color(self.context.brand.palette["gold"]), self.context.brand.spacing["sm"] + copy_offset)
+        text.centered(canvas, self.settings.tagline, copy_area, body, max(14, area.height // 20), parse_color(self.context.brand.palette["parchment"]), self.context.brand.spacing["lg"] + copy_offset)
+
+    def _paint_stacked_copy(self, canvas: Canvas, text: TextPainter, area: Rect, display: str, body: str) -> None:
+        lines = [
+            (self.settings.headline, display, max(24, area.height // 7), parse_color(self.context.brand.palette["parchment"])),
+            (self.settings.subtitle, body, max(18, area.height // 14), parse_color(self.context.brand.palette["gold"])),
+            (self.settings.tagline, body, max(14, area.height // 20), parse_color(self.context.brand.palette["parchment"])),
+        ]
+        visible = [line for line in lines if line[0]]
+        if not visible:
+            return
+        gap = self.context.brand.spacing["xs"]
+        total_height = sum(size for _, _, size, _ in visible) + gap * (len(visible) - 1)
+        y = area.center[1] + self.settings.copy_offset_y - total_height // 2
+        for content, font, size, color in visible:
+            text.centered(canvas, content, area, font, size, color, y - area.center[1])
+            y += size + gap
+
+    def _copy_area(self, area: Rect) -> Rect:
+        if self.settings.copy_anchor == "full":
+            return area
+        return Constraints(round(area.width * self.settings.copy_width), area.height, horizontal="left", vertical="center_y").resolve(area)
 
     def _paint_assets(self, canvas: Canvas) -> None:
         area = self._content_area()
@@ -63,7 +92,8 @@ class Template(ABC):
             canvas.paste(portrait, target)
         if self.settings.logo:
             logo = self.context.assets.image(self.settings.logo)
-            horizontal, vertical = ("left", "top") if self.settings.logo_anchor == "top_left" else ("center_x", "center_y")
+            anchors = {"top_left": ("left", "top"), "top_center": ("center_x", "top"), "center": ("center_x", "center_y")}
+            horizontal, vertical = anchors[self.settings.logo_anchor]
             logo_box = Constraints(round(area.width * self.settings.logo_scale), round(area.height * self.settings.logo_scale), horizontal=horizontal, vertical=vertical).resolve(area)
             target = fit_aspect(*logo.size, logo_box)
             canvas.paste(logo, target)
