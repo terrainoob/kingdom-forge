@@ -39,6 +39,7 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
+.pytest-work/
 .tox/
 .nox/
 htmlcov/
@@ -89,3 +90,9 @@ Desktop.ini
 # Kingdom Forge generated assets
 output/*
 !output/.gitkeep
+
+# Private Kingdom Forge project data (keep local; never publish)
+assets/**
+!assets/.gitkeep
+config/project.yaml
+docs/SIR_POPS_SETUP.md

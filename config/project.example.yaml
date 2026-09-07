@@ -1,0 +1,33 @@
+# Copy this file to project.yaml and replace every sample value with your own brand data.
+project:
+  name: Example Brand
+  version: 0.1.0
+  output_directory: output
+  assets_directory: assets
+logging:
+  level: INFO
+brand:
+  palette:
+    background: "#101010"
+    accent: "#C0A060"
+    text: "#F5F5F5"
+    gold: "#C0A060"
+    parchment: "#F5F5F5"
+  typography:
+    display: assets/fonts/display.ttf
+    body: assets/fonts/body.ttf
+  spacing:
+    xs: 8
+    sm: 24
+    md: 48
+    lg: 96
+  corner_radius: 24
+templates:
+  - name: example-banner
+    kind: youtube_banner
+    width: 2560
+    height: 1440
+    background_color: background
+    headline: Example Brand
+    subtitle: Replace this copy
+    safe_area: youtube_critical

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from kingdom_forge.assets import AssetManager
 from kingdom_forge.config import BrandSettings, TemplateSettings
-from kingdom_forge.layout import Constraints, Rect, safe_area
+from kingdom_forge.layout import Constraints, Rect, fit_aspect, safe_area
 from kingdom_forge.render import Canvas, FontLoader, TextPainter, parse_color
 
 
@@ -55,11 +55,13 @@ class Template(ABC):
         area = self._content_area()
         if self.settings.character:
             portrait = self.context.assets.image(self.settings.character)
-            target = Constraints(area.width // 3, area.height, horizontal="right", vertical="bottom").resolve(area)
+            portrait_box = Constraints(area.width // 3, area.height, horizontal="right", vertical="bottom").resolve(area)
+            target = fit_aspect(*portrait.size, portrait_box)
             canvas.paste(portrait, target)
         if self.settings.logo:
             logo = self.context.assets.image(self.settings.logo)
-            target = Constraints(area.width // 4, area.height // 4, horizontal="left", vertical="top").resolve(area)
+            logo_box = Constraints(area.width // 4, area.height // 4, horizontal="left", vertical="top").resolve(area)
+            target = fit_aspect(*logo.size, logo_box)
             canvas.paste(logo, target)
 
 

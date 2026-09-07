@@ -17,7 +17,7 @@ python -m pip install -e ".[dev]"
 
 ## Configuration and CLI
 
-`config/project.yaml` is the single source of truth for project paths, semantic color tokens, font roles, spacing, and graphics to publish. Templates name colors and assets; they do not embed branding values in Python code.
+`config/project.yaml` is the local source of truth for project paths, semantic color tokens, font roles, spacing, and graphics to publish. It is intentionally ignored by Git because it can contain private brand assets and copy. Begin by copying `config/project.example.yaml` to `config/project.yaml`, then replace every sample value with your own data.
 
 ```powershell
 kingdom-forge validate
