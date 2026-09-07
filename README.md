@@ -28,6 +28,8 @@ kingdom-forge build --template youtube-banner --guides
 kingdom-forge --config path\to\project.yaml validate
 ```
 
+To use one local configuration from any working directory, set the `KINGDOM_FORGE_CONFIG` environment variable to its absolute path. An explicit `--config` argument always takes precedence.
+
 ## Publishing workflow
 
 `kingdom-forge build` renders every configured template as an optimized RGBA PNG. It also writes `output/manifest.json`, with version and SHA-256 digests, and `output/build-report.txt`. Use `--template` repeatedly for focused builds; use `--guides` to export previews with visible safe-area guides.

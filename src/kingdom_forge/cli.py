@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Sequence
 
@@ -13,7 +14,7 @@ from kingdom_forge.exceptions import ConfigurationError, KingdomForgeError
 from kingdom_forge.logging import configure_logging
 from kingdom_forge.publishing import Publisher
 
-DEFAULT_CONFIG_PATH = Path("config/project.yaml")
+DEFAULT_CONFIG_PATH = Path(os.environ.get("KINGDOM_FORGE_CONFIG", "config/project.yaml"))
 LOGGER = logging.getLogger(__name__)
 
 
