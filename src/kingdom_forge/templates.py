@@ -48,13 +48,33 @@ class Template(ABC):
         text = TextPainter(self.context.fonts)
         display = self.context.brand.typography["display"]
         body = self.context.brand.typography["body"]
-        if self.settings.copy_layout == "stacked":
+        if self.settings.motto:
+            self._paint_motto(canvas, text, copy_area, display)
+        elif self.settings.copy_layout == "stacked":
             self._paint_stacked_copy(canvas, text, copy_area, display, body)
         else:
             self._paint_legacy_copy(canvas, text, area, copy_area, display, body)
         if self.context.guides:
             from PIL import ImageDraw
             ImageDraw.Draw(canvas.image).rectangle((area.x, area.y, area.right, area.bottom), outline=parse_color(self.context.brand.palette["gold"]), width=max(1, self.context.brand.spacing["xs"] // 8))
+
+    def _paint_motto(self, canvas: Canvas, text: TextPainter, area: Rect, display: str) -> None:
+        assert self.settings.motto is not None
+        panel_height = round(area.height * 0.21)
+        panel = Constraints(round(area.width * 0.7), panel_height, horizontal="left", vertical="bottom").resolve(area)
+        canvas.panel(panel, parse_color("#0E0B12DD"), self.context.brand.corner_radius)
+        lines = (self.settings.motto.first, self.settings.motto.second)
+        font_size = max(22, panel.height // 2 - 5)
+        gap = max(4, self.context.brand.spacing["xs"] // 2)
+        line_height = font_size + gap
+        y = panel.y + (panel.height - (line_height * len(lines) - gap)) // 2
+        for line in lines:
+            bounds = text.paired_centered(canvas, line.lead, line.accent, panel, display, font_size, parse_color(self.context.brand.palette["parchment"]), parse_color(self.context.brand.palette[line.accent_color]), y)
+            from PIL import ImageDraw
+            draw = ImageDraw.Draw(canvas.image)
+            accent_color = parse_color(self.context.brand.palette[line.accent_color])
+            draw.line((bounds[0], bounds[3] + 2, bounds[2], bounds[3] + 2), fill=accent_color, width=max(1, self.context.brand.spacing["xs"] // 3))
+            y += line_height
 
     def _paint_legacy_copy(self, canvas: Canvas, text: TextPainter, area: Rect, copy_area: Rect, display: str, body: str) -> None:
         copy_offset = self.settings.copy_offset_y

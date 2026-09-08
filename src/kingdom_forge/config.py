@@ -36,6 +36,21 @@ class BrandSettings:
 
 
 @dataclass(frozen=True, slots=True)
+class MottoLine:
+    """A two-tone phrase used in a compact campaign motto."""
+    lead: str
+    accent: str
+    accent_color: str
+
+
+@dataclass(frozen=True, slots=True)
+class MottoSettings:
+    """Two-line, brand-token-driven motto treatment."""
+    first: MottoLine
+    second: MottoLine
+
+
+@dataclass(frozen=True, slots=True)
 class TemplateSettings:
     """Declarative settings for one rendered template."""
     name: str
@@ -59,6 +74,7 @@ class TemplateSettings:
     copy_anchor: str = "full"
     copy_offset_y: int = 0
     copy_layout: str = "legacy"
+    motto: MottoSettings | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,14 +129,14 @@ def _brand(raw: dict[str, Any]) -> BrandSettings:
 def _templates(raw: Any) -> tuple[TemplateSettings, ...]:
     if not isinstance(raw, list):
         raise ConfigurationError("templates must be a YAML list.")
-    allowed = {"name", "kind", "width", "height", "background_color", "background_image", "background_opacity", "headline", "subtitle", "tagline", "logo", "logo_scale", "logo_anchor", "copy_width", "copy_anchor", "copy_offset_y", "copy_layout", "character", "safe_area", "transparent", "output_name"}
+    allowed = {"name", "kind", "width", "height", "background_color", "background_image", "background_opacity", "headline", "subtitle", "tagline", "logo", "logo_scale", "logo_anchor", "copy_width", "copy_anchor", "copy_offset_y", "copy_layout", "motto", "character", "safe_area", "transparent", "output_name"}
     result: list[TemplateSettings] = []
     for index, value in enumerate(raw):
         item = _mapping(value, f"templates[{index}]")
         _unknown(item, allowed, f"templates[{index}]")
         result.append(TemplateSettings(
             _string(item.get("name"), f"templates[{index}].name"), _string(item.get("kind"), f"templates[{index}].kind"), _positive_int(item.get("width"), f"templates[{index}].width"), _positive_int(item.get("height"), f"templates[{index}].height"), _string(item.get("background_color"), f"templates[{index}].background_color"),
-            _optional_string(item.get("headline"), f"templates[{index}].headline"), _optional_string(item.get("subtitle"), f"templates[{index}].subtitle"), _optional_string(item.get("tagline"), f"templates[{index}].tagline"), _optional_path(item.get("logo"), f"templates[{index}].logo"), _optional_path(item.get("character"), f"templates[{index}].character"), _optional_string(item.get("safe_area"), f"templates[{index}].safe_area"), _bool(item.get("transparent", False), f"templates[{index}].transparent"), _optional_string(item.get("output_name"), f"templates[{index}].output_name"), _optional_path(item.get("background_image"), f"templates[{index}].background_image"), _opacity(item.get("background_opacity", 1.0), f"templates[{index}].background_opacity"), _positive_unit_float(item.get("logo_scale", 0.25), f"templates[{index}].logo_scale"), _logo_anchor(item.get("logo_anchor", "top_left"), f"templates[{index}].logo_anchor"), _positive_unit_float(item.get("copy_width", 1.0), f"templates[{index}].copy_width"), _copy_anchor(item.get("copy_anchor", "full"), f"templates[{index}].copy_anchor"), _integer(item.get("copy_offset_y", 0), f"templates[{index}].copy_offset_y"), _copy_layout(item.get("copy_layout", "legacy"), f"templates[{index}].copy_layout"),
+            _optional_string(item.get("headline"), f"templates[{index}].headline"), _optional_string(item.get("subtitle"), f"templates[{index}].subtitle"), _optional_string(item.get("tagline"), f"templates[{index}].tagline"), _optional_path(item.get("logo"), f"templates[{index}].logo"), _optional_path(item.get("character"), f"templates[{index}].character"), _optional_string(item.get("safe_area"), f"templates[{index}].safe_area"), _bool(item.get("transparent", False), f"templates[{index}].transparent"), _optional_string(item.get("output_name"), f"templates[{index}].output_name"), _optional_path(item.get("background_image"), f"templates[{index}].background_image"), _opacity(item.get("background_opacity", 1.0), f"templates[{index}].background_opacity"), _positive_unit_float(item.get("logo_scale", 0.25), f"templates[{index}].logo_scale"), _logo_anchor(item.get("logo_anchor", "top_left"), f"templates[{index}].logo_anchor"), _positive_unit_float(item.get("copy_width", 1.0), f"templates[{index}].copy_width"), _copy_anchor(item.get("copy_anchor", "full"), f"templates[{index}].copy_anchor"), _integer(item.get("copy_offset_y", 0), f"templates[{index}].copy_offset_y"), _copy_layout(item.get("copy_layout", "legacy"), f"templates[{index}].copy_layout"), _motto(item.get("motto"), f"templates[{index}].motto"),
         ))
     return tuple(result)
 
@@ -161,6 +177,20 @@ def _copy_layout(value: Any, location: str) -> str:
     if result not in {"legacy", "stacked"}:
         raise ConfigurationError(f"{location} must be one of: legacy, stacked.")
     return result
+
+
+def _motto(value: Any, location: str) -> MottoSettings | None:
+    if value is None:
+        return None
+    raw = _mapping(value, location)
+    _unknown(raw, {"first", "second"}, location)
+    return MottoSettings(_motto_line(raw.get("first"), f"{location}.first"), _motto_line(raw.get("second"), f"{location}.second"))
+
+
+def _motto_line(value: Any, location: str) -> MottoLine:
+    raw = _mapping(value, location)
+    _unknown(raw, {"lead", "accent", "accent_color"}, location)
+    return MottoLine(_string(raw.get("lead"), f"{location}.lead"), _string(raw.get("accent"), f"{location}.accent"), _string(raw.get("accent_color"), f"{location}.accent_color"))
 
 
 def _unknown(value: dict[str, Any], allowed: set[str], location: str) -> None:

@@ -43,6 +43,13 @@ class Canvas:
             fitted.putalpha(fitted.getchannel("A").point(lambda value: round(value * opacity)))
         self.image.alpha_composite(fitted)
 
+    def panel(self, bounds: Rect, color: tuple[int, int, int, int], radius: int = 0) -> None:
+        """Composite a translucent, optionally rounded information panel."""
+        layer = Image.new("RGBA", (bounds.width, bounds.height), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(layer)
+        draw.rounded_rectangle((0, 0, bounds.width - 1, bounds.height - 1), radius=radius, fill=color)
+        self.image.alpha_composite(layer, (bounds.x, bounds.y))
+
 
 @dataclass(frozen=True, slots=True)
 class Layer:
@@ -99,6 +106,22 @@ class TextPainter:
         x = area.center[0] - (right - left) // 2
         y = area.center[1] - (bottom - top) // 2 + y_offset
         draw.text((x, y), text, font=font, fill=color)
+
+    def paired_centered(self, canvas: Canvas, lead: str, accent: str, area: Rect, font_name: str, size: int, lead_color: tuple[int, int, int, int], accent_color: tuple[int, int, int, int], y: int) -> tuple[int, int, int, int]:
+        """Paint two differently colored adjacent phrases centered as one unit."""
+        draw = ImageDraw.Draw(canvas.image)
+        font = self._fonts.get(font_name, size)
+        lead_box = draw.textbbox((0, 0), lead, font=font)
+        accent_box = draw.textbbox((0, 0), accent, font=font)
+        gap = max(4, size // 5)
+        lead_width = lead_box[2] - lead_box[0]
+        accent_width = accent_box[2] - accent_box[0]
+        width = lead_width + gap + accent_width
+        x = area.center[0] - width // 2
+        draw.text((x, y), lead, font=font, fill=lead_color)
+        accent_x = x + lead_width + gap
+        draw.text((accent_x, y), accent, font=font, fill=accent_color)
+        return (x, y, x + width, y + max(lead_box[3], accent_box[3]))
 
 
 class PngExporter:
