@@ -36,6 +36,9 @@ class Template(ABC):
         canvas = Canvas(self.settings.width, self.settings.height, rgba if not self.settings.transparent else (*rgba[:3], 0))
         if self.settings.background_image:
             canvas.cover(self.context.assets.image(self.settings.background_image), self.settings.background_opacity)
+        if self.settings.motto:
+            dark = parse_color(self.context.brand.palette.get("night", "#0E0B12"))
+            canvas.panel(self._content_area(), (*dark[:3], 184))
         return canvas
 
     def _content_area(self) -> Rect:
@@ -60,21 +63,17 @@ class Template(ABC):
 
     def _paint_motto(self, canvas: Canvas, text: TextPainter, area: Rect, display: str) -> None:
         assert self.settings.motto is not None
-        panel_height = round(area.height * 0.21)
-        panel = Constraints(round(area.width * 0.7), panel_height, horizontal="left", vertical="bottom").resolve(area)
-        canvas.panel(panel, parse_color("#0E0B12DD"), self.context.brand.corner_radius)
         lines = (self.settings.motto.first, self.settings.motto.second)
-        font_size = max(22, panel.height // 2 - 5)
-        gap = max(4, self.context.brand.spacing["xs"] // 2)
-        line_height = font_size + gap
-        y = panel.y + (panel.height - (line_height * len(lines) - gap)) // 2
+        font_size = max(30, area.height // 11)
+        line_gap = max(self.context.brand.spacing["sm"], font_size // 2)
+        footer_size = max(18, area.height // 14)
+        footer_gap = self.context.brand.spacing["sm"]
+        total_height = font_size * len(lines) + line_gap + footer_size + footer_gap
+        y = area.bottom - total_height - self.context.brand.spacing["xs"]
         for line in lines:
-            bounds = text.paired_centered(canvas, line.lead, line.accent, panel, display, font_size, parse_color(self.context.brand.palette["parchment"]), parse_color(self.context.brand.palette[line.accent_color]), y)
-            from PIL import ImageDraw
-            draw = ImageDraw.Draw(canvas.image)
-            accent_color = parse_color(self.context.brand.palette[line.accent_color])
-            draw.line((bounds[0], bounds[3] + 2, bounds[2], bounds[3] + 2), fill=accent_color, width=max(1, self.context.brand.spacing["xs"] // 3))
-            y += line_height
+            text.paired_centered(canvas, line.lead, line.accent, area, display, font_size, parse_color(self.context.brand.palette["parchment"]), parse_color(self.context.brand.palette[line.accent_color]), y)
+            y += font_size + line_gap
+        text.centered(canvas, self.settings.tagline, area, self.context.brand.typography["body"], footer_size, parse_color(self.context.brand.palette["parchment"]), y - area.center[1])
 
     def _paint_legacy_copy(self, canvas: Canvas, text: TextPainter, area: Rect, copy_area: Rect, display: str, body: str) -> None:
         copy_offset = self.settings.copy_offset_y
