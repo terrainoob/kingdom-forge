@@ -75,6 +75,8 @@ class TemplateSettings:
     copy_offset_y: int = 0
     copy_layout: str = "legacy"
     motto: MottoSettings | None = None
+    motto_rotation_degrees: int = 0
+    character_scale: float = 1.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -129,14 +131,14 @@ def _brand(raw: dict[str, Any]) -> BrandSettings:
 def _templates(raw: Any) -> tuple[TemplateSettings, ...]:
     if not isinstance(raw, list):
         raise ConfigurationError("templates must be a YAML list.")
-    allowed = {"name", "kind", "width", "height", "background_color", "background_image", "background_opacity", "headline", "subtitle", "tagline", "logo", "logo_scale", "logo_anchor", "copy_width", "copy_anchor", "copy_offset_y", "copy_layout", "motto", "character", "safe_area", "transparent", "output_name"}
+    allowed = {"name", "kind", "width", "height", "background_color", "background_image", "background_opacity", "headline", "subtitle", "tagline", "logo", "logo_scale", "logo_anchor", "copy_width", "copy_anchor", "copy_offset_y", "copy_layout", "motto", "motto_rotation_degrees", "character", "character_scale", "safe_area", "transparent", "output_name"}
     result: list[TemplateSettings] = []
     for index, value in enumerate(raw):
         item = _mapping(value, f"templates[{index}]")
         _unknown(item, allowed, f"templates[{index}]")
         result.append(TemplateSettings(
             _string(item.get("name"), f"templates[{index}].name"), _string(item.get("kind"), f"templates[{index}].kind"), _positive_int(item.get("width"), f"templates[{index}].width"), _positive_int(item.get("height"), f"templates[{index}].height"), _string(item.get("background_color"), f"templates[{index}].background_color"),
-            _optional_string(item.get("headline"), f"templates[{index}].headline"), _optional_string(item.get("subtitle"), f"templates[{index}].subtitle"), _optional_string(item.get("tagline"), f"templates[{index}].tagline"), _optional_path(item.get("logo"), f"templates[{index}].logo"), _optional_path(item.get("character"), f"templates[{index}].character"), _optional_string(item.get("safe_area"), f"templates[{index}].safe_area"), _bool(item.get("transparent", False), f"templates[{index}].transparent"), _optional_string(item.get("output_name"), f"templates[{index}].output_name"), _optional_path(item.get("background_image"), f"templates[{index}].background_image"), _opacity(item.get("background_opacity", 1.0), f"templates[{index}].background_opacity"), _positive_unit_float(item.get("logo_scale", 0.25), f"templates[{index}].logo_scale"), _logo_anchor(item.get("logo_anchor", "top_left"), f"templates[{index}].logo_anchor"), _positive_unit_float(item.get("copy_width", 1.0), f"templates[{index}].copy_width"), _copy_anchor(item.get("copy_anchor", "full"), f"templates[{index}].copy_anchor"), _integer(item.get("copy_offset_y", 0), f"templates[{index}].copy_offset_y"), _copy_layout(item.get("copy_layout", "legacy"), f"templates[{index}].copy_layout"), _motto(item.get("motto"), f"templates[{index}].motto"),
+            _optional_string(item.get("headline"), f"templates[{index}].headline"), _optional_string(item.get("subtitle"), f"templates[{index}].subtitle"), _optional_string(item.get("tagline"), f"templates[{index}].tagline"), _optional_path(item.get("logo"), f"templates[{index}].logo"), _optional_path(item.get("character"), f"templates[{index}].character"), _optional_string(item.get("safe_area"), f"templates[{index}].safe_area"), _bool(item.get("transparent", False), f"templates[{index}].transparent"), _optional_string(item.get("output_name"), f"templates[{index}].output_name"), _optional_path(item.get("background_image"), f"templates[{index}].background_image"), _opacity(item.get("background_opacity", 1.0), f"templates[{index}].background_opacity"), _positive_unit_float(item.get("logo_scale", 0.25), f"templates[{index}].logo_scale"), _logo_anchor(item.get("logo_anchor", "top_left"), f"templates[{index}].logo_anchor"), _positive_unit_float(item.get("copy_width", 1.0), f"templates[{index}].copy_width"), _copy_anchor(item.get("copy_anchor", "full"), f"templates[{index}].copy_anchor"), _integer(item.get("copy_offset_y", 0), f"templates[{index}].copy_offset_y"), _copy_layout(item.get("copy_layout", "legacy"), f"templates[{index}].copy_layout"), _motto(item.get("motto"), f"templates[{index}].motto"), _integer(item.get("motto_rotation_degrees", 0), f"templates[{index}].motto_rotation_degrees"), _positive_unit_float(item.get("character_scale", 1.0), f"templates[{index}].character_scale"),
         ))
     return tuple(result)
 

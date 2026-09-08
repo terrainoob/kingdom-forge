@@ -5,6 +5,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+from PIL import Image
+
 from kingdom_forge.assets import AssetManager
 from kingdom_forge.config import BrandSettings, TemplateSettings
 from kingdom_forge.layout import Constraints, Rect, fit_aspect, safe_area
@@ -53,6 +55,8 @@ class Template(ABC):
         body = self.context.brand.typography["body"]
         if self.settings.motto:
             self._paint_motto(canvas, text, copy_area, display)
+            footer_size = max(18, area.height // 14)
+            text.centered(canvas, self.settings.tagline, area, body, footer_size, parse_color(self.context.brand.palette["parchment"]), area.height // 2 - self.context.brand.spacing["sm"])
         elif self.settings.copy_layout == "stacked":
             self._paint_stacked_copy(canvas, text, copy_area, display, body)
         else:
@@ -64,16 +68,19 @@ class Template(ABC):
     def _paint_motto(self, canvas: Canvas, text: TextPainter, area: Rect, display: str) -> None:
         assert self.settings.motto is not None
         lines = (self.settings.motto.first, self.settings.motto.second)
-        font_size = max(30, area.height // 11)
+        font_size = max(28, min(area.height // 5, area.width // 10))
         line_gap = max(self.context.brand.spacing["sm"], font_size // 2)
-        footer_size = max(18, area.height // 14)
-        footer_gap = self.context.brand.spacing["sm"]
-        total_height = font_size * len(lines) + line_gap + footer_size + footer_gap
-        y = area.bottom - total_height - self.context.brand.spacing["xs"]
+        total_height = font_size * len(lines) + line_gap
+        local = Canvas(area.width, area.height, (0, 0, 0, 0))
+        local_area = Rect(0, 0, area.width, area.height)
+        y = local_area.center[1] - total_height // 2
         for line in lines:
-            text.paired_centered(canvas, line.lead, line.accent, area, display, font_size, parse_color(self.context.brand.palette["parchment"]), parse_color(self.context.brand.palette[line.accent_color]), y)
+            text.paired_centered(local, line.lead, line.accent, local_area, display, font_size, parse_color(self.context.brand.palette["parchment"]), parse_color(self.context.brand.palette[line.accent_color]), y)
             y += font_size + line_gap
-        text.centered(canvas, self.settings.tagline, area, self.context.brand.typography["body"], footer_size, parse_color(self.context.brand.palette["parchment"]), y - area.center[1])
+        rotated = local.image.rotate(self.settings.motto_rotation_degrees, resample=Image.Resampling.BICUBIC, expand=True)
+        x = area.center[0] - rotated.width // 2
+        y = area.center[1] - rotated.height // 2
+        canvas.image.alpha_composite(rotated, (x, y))
 
     def _paint_legacy_copy(self, canvas: Canvas, text: TextPainter, area: Rect, copy_area: Rect, display: str, body: str) -> None:
         copy_offset = self.settings.copy_offset_y
@@ -106,7 +113,7 @@ class Template(ABC):
         area = self._content_area()
         if self.settings.character:
             portrait = self.context.assets.image(self.settings.character)
-            portrait_box = Constraints(area.width // 3, area.height, horizontal="right", vertical="bottom").resolve(area)
+            portrait_box = Constraints(area.width // 3, round(area.height * self.settings.character_scale), horizontal="right", vertical="bottom").resolve(area)
             target = fit_aspect(*portrait.size, portrait_box)
             canvas.paste(portrait, target)
         if self.settings.logo:
