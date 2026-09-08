@@ -40,7 +40,8 @@ class Template(ABC):
             canvas.cover(self.context.assets.image(self.settings.background_image), self.settings.background_opacity)
         if self.settings.motto:
             dark = parse_color(self.context.brand.palette.get("night", "#0E0B12"))
-            canvas.panel(self._content_area(), (*dark[:3], 184))
+            content = self._content_area()
+            canvas.panel(Rect(0, content.y, self.settings.width, content.height), (*dark[:3], 184))
         return canvas
 
     def _content_area(self) -> Rect:
@@ -56,7 +57,7 @@ class Template(ABC):
         if self.settings.motto:
             self._paint_motto(canvas, text, copy_area, display)
             footer_size = max(18, area.height // 14)
-            text.centered(canvas, self.settings.tagline, area, body, footer_size, parse_color(self.context.brand.palette["parchment"]), area.height // 2 - self.context.brand.spacing["sm"])
+            text.centered(canvas, self.settings.tagline, area, display, footer_size, parse_color(self.context.brand.palette["parchment"]), area.height // 2 - self.context.brand.spacing["sm"])
         elif self.settings.copy_layout == "stacked":
             self._paint_stacked_copy(canvas, text, copy_area, display, body)
         else:
@@ -115,6 +116,8 @@ class Template(ABC):
             portrait = self.context.assets.image(self.settings.character)
             portrait_box = Constraints(area.width // 3, round(area.height * self.settings.character_scale), horizontal="right", vertical="bottom").resolve(area)
             target = fit_aspect(*portrait.size, portrait_box)
+            if self.settings.character_anchor == "right":
+                target = Constraints(target.width, target.height, horizontal="right", vertical="bottom").resolve(portrait_box)
             canvas.paste(portrait, target)
         if self.settings.logo:
             logo = self.context.assets.image(self.settings.logo)
